@@ -7,6 +7,8 @@ use process::Command;
 use color_eyre::eyre::Result;
 use structopt::StructOpt;
 
+extern crate log;
+
 /// This applies a patch directly to the main branch.
 ///
 /// Usage:
@@ -77,25 +79,25 @@ fn run() -> Result<()> {
     let tree_oid = index.write_tree_to(&repo)?;
     let tree = repo.find_tree(tree_oid)?;
 
-    let commit_oid = repo.commit(
-        None,
-        &author,
-        &author,
-        &opts.message.unwrap(),
-        &tree,
-        &[&main_commit],
-    )?;
+    let message = match opts.message {
+        Some(msg) => msg,
+        None => edit::edit("")?,
+    };
+
+    let commit_oid = repo.commit(None, &author, &author, &message, &tree, &[&main_commit])?;
     let commit = repo.find_commit(commit_oid)?;
 
-    // TODO: make sure opts.branch does not exist yet.
-    let branch = repo.branch(&opts.branch, &commit, opts.force)?;
-    println!("Created new branch: {:?}", branch.name());
+    let _branch = repo.branch(&opts.branch, &commit, opts.force)?;
 
     // TODO: Don't forget to clean up the index (still added)
+    if opts.keep {
+        // TODO: use the commit
+    } else {
+    }
 
-    println!("push: {}", opts.push);
     // TODO: Use git2 instead of Command.
     if opts.push {
+        log::info!("Pushing new branch to origin.");
         let status = Command::new("git")
             .args(&[
                 "-C",
@@ -106,17 +108,20 @@ fn run() -> Result<()> {
                 &opts.branch,
             ])
             .status()?;
-        println!("Status: {}", status);
+        if !status.success() {
+            log::error!("Failed to run git push. {}", status);
+        } else {
+            log::info!("Git push succeeded");
+        }
     }
 
     Ok(())
 }
 
-fn main() {
-    let result = run();
+fn main() -> Result<()> {
+    color_eyre::install()?;
+    env_logger::init();
 
-    if let Err(e) = result {
-        eprintln!("Error: {}", e);
-        process::exit(1);
-    }
+    run()?;
+    Ok(())
 }

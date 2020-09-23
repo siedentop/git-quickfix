@@ -12,7 +12,8 @@ the original branch.
 
 ## How it works
 
-1. `git add -p`
+1. Stage the changes you would like to patch. `git add --patch` is a good way to
+   do this.
 2. `git quickfix --push <new_branch>`
 3. `git quickfix --help` provides more options.
 
@@ -28,12 +29,15 @@ You can use Cargo to install quickfix.
 cargo install git-quickfix
 ```
 
-# TODO
+## Known Issues
+
+- Calling from a subdirectory of the git repo is not implemented yet.
+- Git configured editors (for the commit message) will not be picked up. Neither
+  will a git commit-msg template. However, the EDITOR and VISUAL environment
+  variables will be heeded.
+
+### TODO
 
 - Add Github action
-- run clappy
-- fix unwraps
-- test gitdir
-- check if called from subdirectory of gitdir --> Known not to work.
-- test git-commit opens editor --> `-m` is currently required.
-- Use Logging
+- Fix unwraps
+- Test gitdir

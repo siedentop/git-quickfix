@@ -8,6 +8,14 @@ and this project adheres to
 
 ## [Unreleased]
 
+## [0.0.2] - 2020-09-23
+
+### Added
+
+- If no message is provided, the users default editor will open.
+- Logging is used instead of println.
+- color_eyre is used for error handling
+
 ## [0.0.1] - 2020-09-22
 
 ### Added
