@@ -1,0 +1,20 @@
+[package]
+name = "git-quickfix"
+version = "0.0.1"
+authors = ["Christoph Siedentop <cargo@siedentop.name>"]
+edition = "2018"
+license = "GPLv3"
+description = "A small utility to apply patches outside of the current branch."
+homepage = "https://github.com/siedentop/git-quickfix"
+documentation = "https://github.com/siedentop/git-quickfix"
+repository = "https://github.com/siedentop/git-quickfix"
+readme = "https://github.com/siedentop/git-quickfix/README.md"
+
+[[bin]]
+name = "git-quickfix"
+path = "src/main.rs"
+
+[dependencies]
+git2 = "0.13"
+structopt = "0.3"
+color-eyre = { version = "0.5", default-features = false }
