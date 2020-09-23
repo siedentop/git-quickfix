@@ -3,12 +3,12 @@ name = "git-quickfix"
 version = "0.0.1"
 authors = ["Christoph Siedentop <cargo@siedentop.name>"]
 edition = "2018"
-license = "GPLv3"
+license = "GPL-3.0"
 description = "A small utility to apply patches outside of the current branch."
 homepage = "https://github.com/siedentop/git-quickfix"
 documentation = "https://github.com/siedentop/git-quickfix"
 repository = "https://github.com/siedentop/git-quickfix"
-readme = "https://github.com/siedentop/git-quickfix/README.md"
+readme = "README.md"
 
 [[bin]]
 name = "git-quickfix"
