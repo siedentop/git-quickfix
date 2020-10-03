@@ -4,7 +4,8 @@ use git2;
 use git2::Repository;
 use process::Command;
 
-use color_eyre::eyre::Result;
+use color_eyre::{eyre::Report, eyre::Result, Section};
+use eyre::eyre;
 use structopt::StructOpt;
 
 extern crate log;
@@ -51,7 +52,7 @@ struct Opt {
     onto: Option<String>,
 }
 
-fn run() -> Result<()> {
+fn run() -> Result<(), Report> {
     let mut opts = Opt::from_args();
     opts.onto = Some("origin/master".to_string()); // TODO: This is planned to be defaulted to origin/main or origin/master if the first is not available.
 
@@ -78,12 +79,13 @@ fn run() -> Result<()> {
     let tree_oid = index.write_tree_to(&repo)?;
     let tree = repo.find_tree(tree_oid)?;
 
-    let message = match opts.message {
-        Some(msg) => msg,
-        None => edit::edit("")?,
-    };
+    let message = commit
+        .message_raw()
+        .ok_or_else(|| eyre!("Could not read the commit message."))
+        .suggestion("Make sure the commit message contains only UTF-8 characters or try to manually cherry-pick the commit.")?;
 
-    let commit_oid = repo.commit(None, &author, &author, &message, &tree, &[&main_commit])?;
+    // TODO: try update_ref as fully qualified.
+    let commit_oid = repo.commit(None, &author, &author, message, &tree, &[&main_commit])?;
     let commit = repo.find_commit(commit_oid)?;
 
     let _branch = repo.branch(&opts.branch, &commit, opts.force)?;
