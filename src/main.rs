@@ -55,8 +55,7 @@ fn run() -> Result<()> {
     let mut opts = Opt::from_args();
     opts.onto = Some("origin/master".to_string()); // TODO: This is planned to be defaulted to origin/main or origin/master if the first is not available.
 
-    let gitdir = std::env::current_dir()?;
-    let repo = Repository::open(gitdir.clone())?;
+    let repo = Repository::open_from_env()?;
 
     // Commit current index to current branch.
     let author = repo.signature()?;
@@ -99,14 +98,7 @@ fn run() -> Result<()> {
     if opts.push {
         log::info!("Pushing new branch to origin.");
         let status = Command::new("git")
-            .args(&[
-                "-C",
-                &gitdir.to_string_lossy(),
-                "push",
-                "--set-upstream",
-                "origin",
-                &opts.branch,
-            ])
+            .args(&["push", "--set-upstream", "origin", &opts.branch])
             .status()?;
         if !status.success() {
             log::error!("Failed to run git push. {}", status);
