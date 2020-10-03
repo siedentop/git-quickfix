@@ -112,6 +112,7 @@ fn run() -> Result<()> {
 
 fn main() -> Result<()> {
     color_eyre::install()?;
+    //  Big and bloats the code.
     env_logger::init();
 
     run()?;

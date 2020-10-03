@@ -8,9 +8,14 @@ and this project adheres to
 
 ## [Unreleased]
 
+### Changed
+
+- Provide alias `git qf`.
+
 ### Fixed
 
 - Pick up the git repo also from subdirectories.
+- Reduce binary size.
 
 ## [0.0.2] - 2020-09-23
 

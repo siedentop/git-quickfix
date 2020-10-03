@@ -14,6 +14,18 @@ readme = "README.md"
 name = "git-quickfix"
 path = "src/main.rs"
 
+[[bin]]
+# Please let me know if you know of a better way to provide this alias?
+name = "git-qf"
+path = "src/main.rs"
+
+[profile.release]
+lto = true
+codegen-units = 1
+incremental = false
+opt-level = "z"
+
+
 [dependencies]
 git2 = "0.13"
 structopt = "0.3"

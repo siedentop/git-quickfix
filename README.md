@@ -21,6 +21,8 @@ The new commit and the new branch are both created in memory. This means your
 working directory will not be modified. Unless `--keep` is provided, the staged
 changes will be removed.
 
+You can also use the alias **qf**: `git qf`.
+
 ## Installation
 
 You can use Cargo to install quickfix.
