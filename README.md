@@ -57,5 +57,5 @@ cargo install git-quickfix
 ### TODO
 
 - Add Github action
-- Fix unwraps
-- `--push` will use the Shell to push the changes.
+- `--push` currently use the Shell to push the changes. Benefits: All proxy,
+  auth and other configs are picked up. But if does not feel right.
