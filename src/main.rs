@@ -82,25 +82,29 @@ fn run() -> Result<(), Report> {
         .suggestion("Make sure the commit message contains only UTF-8 characters or try to manually cherry-pick the commit.")?;
 
     // TODO: try update_ref as fully qualified.
-    let commit_oid = repo.commit(
-        None,
-        &fix_commit.author(),
-        &signature,
-        message,
-        &tree,
-        &[&main_commit],
-    )?;
-    let commit = repo.find_commit(commit_oid)?;
-    let _branch = repo.branch(&opts.branch, &commit, opts.force)?;
+    let commit_oid = repo
+        .commit(
+            Some(&format!("refs/heads/{}", opts.branch)),
+            &fix_commit.author(),
+            &signature,
+            message,
+            &tree,
+            &[&main_commit],
+        )
+        .suggestion("You cannot provide an existing branch name. Choose a new branch name or run with --force.")?; // TODO: How do I make sure this suggestion only gets shown if ErrorClass==Object and ErrorCode==-15?
+    log::debug!(
+        "Wrote quickfixed changes to new commit {} and new branch {}",
+        commit_oid,
+        opts.branch
+    );
 
     // TODO: What to do if the index or working dir is dirty?
     if !opts.keep {
-        // git reset --hard HEAD~1
-        assert_eq!(
-            fix_commit.parent_count(),
-            1,
-            "Only works with non-merge commits"
-        );
+        // Equivalent to git reset --hard HEAD~1
+        if fix_commit.parent_count() != 1 {
+            return Err(eyre!("Only works with non-merge commits"))
+                .suggestion("Quickfixing a merge commit is not supported. If you meant to do this please file a ticket with your usecase.");
+        };
         let head_1 = fix_commit.parent(0)?;
         repo.reset(&head_1.as_object(), ResetType::Hard, None)?;
     }
