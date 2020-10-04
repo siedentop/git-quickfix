@@ -10,12 +10,15 @@ and this project adheres to
 
 ### Changed
 
+- Changes should already be committed. Thus it behaves now as something akin to
+  `cherry-pick --onto`.
 - Provide alias `git qf`.
 
 ### Fixed
 
 - Pick up the git repo also from subdirectories.
 - Reduce binary size.
+- Reset starting branch.
 
 ## [0.0.2] - 2020-09-23
 

@@ -1,7 +1,7 @@
 use std::process;
 
-use git2;
 use git2::Repository;
+use git2::{self, ResetType};
 use process::Command;
 
 use color_eyre::{eyre::Report, eyre::Result, Section};
@@ -10,6 +10,7 @@ use structopt::StructOpt;
 
 extern crate log;
 
+// TODO: How do I get the formatting to stay?
 /// This applies a patch directly to the main branch.
 ///
 /// Usage:
@@ -58,42 +59,50 @@ fn run() -> Result<(), Report> {
 
     let repo = Repository::open_from_env()?;
 
-    // Commit current index to current branch.
-    let author = repo.signature()?;
-    let tree_oid = repo.index()?.write_tree()?;
-    let tree = repo.find_tree(tree_oid)?;
-    let parent_oid = repo.head()?.target().unwrap();
-    let parent = repo.find_commit(parent_oid)?;
-    let commit_oid = repo.commit(None, &author, &author, "temporary", &tree, &[&parent])?;
-    let commit = repo.find_commit(commit_oid)?;
+    // Cherry-pick the HEAD onto the main branch but in memory.
+    // Then create a new branch with that cherry-picked commit.
+    let fix_commit = repo.head()?.peel_to_commit()?;
 
-    let main_ref = repo
+    let main_commit = repo
         .revparse(&opts.onto.unwrap())?
         .from()
         .unwrap()
         .peel_to_commit()?;
-    let main_commit = repo.find_commit(main_ref.id())?;
 
-    // Cherry-pick
-    let mut index = repo.cherrypick_commit(&commit, &main_commit, 0, None)?;
+    // Cherry-pick (in memory)
+    let mut index = repo.cherrypick_commit(&fix_commit, &main_commit, 0, None)?;
     let tree_oid = index.write_tree_to(&repo)?;
     let tree = repo.find_tree(tree_oid)?;
 
-    let message = commit
+    // The author is copied from the original commit. But the committer is set to the current user and timestamp.
+    let signature = repo.signature()?;
+    let message = fix_commit
         .message_raw()
         .ok_or_else(|| eyre!("Could not read the commit message."))
         .suggestion("Make sure the commit message contains only UTF-8 characters or try to manually cherry-pick the commit.")?;
 
     // TODO: try update_ref as fully qualified.
-    let commit_oid = repo.commit(None, &author, &author, message, &tree, &[&main_commit])?;
+    let commit_oid = repo.commit(
+        None,
+        &fix_commit.author(),
+        &signature,
+        message,
+        &tree,
+        &[&main_commit],
+    )?;
     let commit = repo.find_commit(commit_oid)?;
-
     let _branch = repo.branch(&opts.branch, &commit, opts.force)?;
 
-    // TODO: Don't forget to clean up the index (still added)
-    if opts.keep {
-        // TODO: use the commit
-    } else {
+    // TODO: What to do if the index or working dir is dirty?
+    if !opts.keep {
+        // git reset --hard HEAD~1
+        assert_eq!(
+            fix_commit.parent_count(),
+            1,
+            "Only works with non-merge commits"
+        );
+        let head_1 = fix_commit.parent(0)?;
+        repo.reset(&head_1.as_object(), ResetType::Hard, None)?;
     }
 
     // TODO: Use git2 instead of Command.
