@@ -1,7 +1,6 @@
 use std::process;
 
-use git2::Repository;
-use git2::{self, ResetType};
+use git2::{self, Repository, ResetType};
 use process::Command;
 
 use color_eyre::{eyre::Report, eyre::Result, Section};
@@ -9,6 +8,15 @@ use eyre::eyre;
 use structopt::StructOpt;
 
 extern crate log;
+
+fn main() -> Result<()> {
+    color_eyre::install()?;
+    //  Big and bloats the code.
+    env_logger::init();
+
+    run()?;
+    Ok(())
+}
 
 // TODO: How do I get the formatting to stay?
 /// This applies a patch directly to the main branch.
@@ -45,24 +53,30 @@ struct Opt {
     )]
     keep: bool,
     #[structopt(
-        help = "The branch to apply the patch onto. Defaults to origin/main .",
-        skip
+        help = "The branch to apply the patch onto. Defaults to the default branch on origin.",
+        long = "onto",
+        short = "o"
     )]
     onto: Option<String>,
 }
 
 fn run() -> Result<(), Report> {
-    let mut opts = Opt::from_args();
-    opts.onto = Some("origin/master".to_string()); // TODO: This is planned to be defaulted to origin/main or origin/master if the first is not available.
-
+    let opts = Opt::from_args();
     let repo = Repository::open_from_env()?;
+
+    let onto_branch = match opts.onto {
+        Some(b) => b,
+        None => {
+            get_default_branch(&repo).suggestion("Manually set the target branch with `--onto`.")?
+        }
+    };
 
     // Cherry-pick the HEAD onto the main branch but in memory.
     // Then create a new branch with that cherry-picked commit.
     let fix_commit = repo.head()?.peel_to_commit()?;
 
     let main_commit = repo
-        .revparse(&opts.onto.unwrap())?
+        .revparse(&onto_branch)?
         .from()
         .unwrap()
         .peel_to_commit()?;
@@ -125,11 +139,17 @@ fn run() -> Result<(), Report> {
     Ok(())
 }
 
-fn main() -> Result<()> {
-    color_eyre::install()?;
-    //  Big and bloats the code.
-    env_logger::init();
-
-    run()?;
-    Ok(())
+fn get_default_branch(repo: &Repository) -> Result<String, Report> {
+    // NOTE: Unfortunately, I cannot use repo.find_remote().default_branch() because it requires a connect() before.
+    // Furthermore, a lot is to be said about returning a Reference or a Revspec instead of a String.
+    for name in ["origin/main", "origin/master", "origin/devel"].iter() {
+        match repo.resolve_reference_from_short_name(name) {
+            Ok(_) => {
+                log::debug!("Found {} as the default remote branch. A bit hacky -- wrong results certainly possible.", name);
+                return Ok(name.to_string());
+            }
+            Err(_) => continue,
+        }
+    }
+    Err(eyre!("Could not find remote default branch."))
 }

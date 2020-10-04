@@ -18,6 +18,8 @@ and this project adheres to
 - Changes should already be committed. Thus it behaves now as something akin to
   `cherry-pick --onto`.
 - Provide alias `git qf`.
+- Try to read the default remote branch automatically. Unfortunately, still
+  hard-coding main, master, devel (in that order).
 
 ### Fixed
 
