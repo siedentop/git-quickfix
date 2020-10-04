@@ -18,23 +18,28 @@ fn main() -> Result<()> {
     Ok(())
 }
 
-// TODO: How do I get the formatting to stay?
-/// This applies a patch directly to the main branch.
+/// This cherry-picks a commit onto a new branch crated from default branch.
+/// A typical use case is when one wants to quickly create a fix without leaving
+/// the current branch. The quickfix-commit will then be cherry-picked onto a new
+/// branch based-off origin/main. The benefit of this tool is that slow, expensive
+/// and disruptive switching of branches is avoided. Everything is done in-memory
+/// with no checkout of files on the file system.
 ///
 /// Usage:
 ///
-/// 1. `git add` as usual.
-/// 2. git quickfix <new-branch>. This will create a new branch from the main branch.
+/// 1. Commit the changes
+/// 2. git quickfix <new-branch>. This will create a new branch from the default branch.
 ///     `--push` will directly push this to the `origin` remote.
-///     `--keep` will keep the patch on the current branch.
-/// 3. The changes will not remain on the current branch, unless `--keep` was given to quickfix.
+///     `--keep` will keep the quickfix commit on the current branch.
+/// 3. The changes will be removed from the current branch, unless `--keep` was given to quickfix.
 ///
 /// Benefits: Quickly provide unrelated fixes without having to abandon the current branch and switching branches.
 
 #[derive(Debug, StructOpt)]
 #[structopt(
     name = "git-quickfix",
-    about = "Apply patches directly to the main branch."
+    about = "Apply patches directly to the main branch.",
+    verbatim_doc_comment
 )]
 struct Opt {
     branch: String,
@@ -53,7 +58,7 @@ struct Opt {
     )]
     keep: bool,
     #[structopt(
-        help = "The branch to apply the patch onto. Defaults to the default branch on origin.",
+        help = "The branch to apply the patch onto. Defaults to the default branch on origin (e.g. origin/main).",
         long = "onto",
         short = "o"
     )]
@@ -93,7 +98,6 @@ fn run() -> Result<(), Report> {
         .ok_or_else(|| eyre!("Could not read the commit message."))
         .suggestion("Make sure the commit message contains only UTF-8 characters or try to manually cherry-pick the commit.")?;
 
-    // TODO: try update_ref as fully qualified.
     let commit_oid = repo
         .commit(
             Some(&format!("refs/heads/{}", opts.branch)),
@@ -130,7 +134,7 @@ fn run() -> Result<(), Report> {
             .args(&["push", "--set-upstream", "origin", &opts.branch])
             .status()?;
         if !status.success() {
-            log::error!("Failed to run git push. {}", status);
+            eyre!("Failed to run git push. {}", status);
         } else {
             log::info!("Git push succeeded");
         }
