@@ -13,7 +13,7 @@ the original branch.
 #### Benefits
 
 - Minimize context switching.
-- Much quicker on large repositories, where branch switching take significant
+- Much quicker on large repositories, where branch switching takes significant
   time.
 - Everything happens in memory, so tools watching the file system will not get
   confused.
