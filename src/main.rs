@@ -38,8 +38,6 @@ struct Opt {
         help = "Push the newly crated branch to origin."
     )]
     push: bool,
-    #[structopt(long = "force", short = "f", help = "Write over an existing branch.")]
-    force: bool,
     #[structopt(
         long = "keep",
         short = "k",
@@ -91,7 +89,9 @@ fn run() -> Result<(), Report> {
             &tree,
             &[&main_commit],
         )
-        .suggestion("You cannot provide an existing branch name. Choose a new branch name or run with --force.")?; // TODO: How do I make sure this suggestion only gets shown if ErrorClass==Object and ErrorCode==-15?
+        .suggestion(
+            "You cannot provide an existing branch name. Choose a new branch name or run with.",
+        )?; // TODO: How do I make sure this suggestion only gets shown if ErrorClass==Object and ErrorCode==-15?
     log::debug!(
         "Wrote quickfixed changes to new commit {} and new branch {}",
         commit_oid,

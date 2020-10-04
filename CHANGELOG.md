@@ -8,6 +8,11 @@ and this project adheres to
 
 ## [Unreleased]
 
+### Removed
+
+- Removed `--force` option to overwrite branches. It would be possible to
+  provide this again in the future, please let me know if you want it.
+
 ### Changed
 
 - Changes should already be committed. Thus it behaves now as something akin to
