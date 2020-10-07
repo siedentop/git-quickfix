@@ -69,20 +69,22 @@ fn run() -> Result<(), Report> {
     let opts = Opt::from_args();
     let repo = Repository::open_from_env()?;
 
-    // Make sure that no rebase / cherry-pick / merge is in progress
-    let state = repo.state();
-    if state != RepositoryState::Clean {
-        return Err(eyre!(
-            "The repository is currently not in a clean state ({:?}).",
-            state
-        ));
-    }
+    if !opts.keep {
+        // Make sure that no rebase / cherry-pick / merge is in progress
+        let state = repo.state();
+        if state != RepositoryState::Clean {
+            return Err(eyre!(
+                "The repository is currently not in a clean state ({:?}).",
+                state
+            ));
+        }
 
-    // Make sure that the work directory has no changes and nothing is staged
-    if !repo.statuses(None)?.is_empty() {
-        return Err(eyre!(
-            "The repository is dirty, aborting. Consider stashing your changes."
-        ));
+        // Make sure that the work directory has no changes and nothing is staged
+        if !repo.statuses(None)?.is_empty() {
+            return Err(eyre!(
+                "The repository is dirty, aborting. Consider stashing your changes."
+            ));
+        }
     }
 
     let onto_branch = match opts.onto {
