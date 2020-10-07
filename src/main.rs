@@ -1,6 +1,6 @@
 use std::process;
 
-use git2::{self, Repository, ResetType};
+use git2::{self, Repository, RepositoryState, ResetType};
 use process::Command;
 
 use color_eyre::{eyre::Report, eyre::Result, Section};
@@ -68,6 +68,15 @@ struct Opt {
 fn run() -> Result<(), Report> {
     let opts = Opt::from_args();
     let repo = Repository::open_from_env()?;
+
+    // Make sure that no rebase / cherry-pick / merge is in progress
+    let state = repo.state();
+    if state != RepositoryState::Clean {
+        return Err(eyre!(
+            "The repository is currently not in a clean state ({:?}).",
+            state
+        ));
+    }
 
     let onto_branch = match opts.onto {
         Some(b) => b,
