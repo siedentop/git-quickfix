@@ -78,6 +78,13 @@ fn run() -> Result<(), Report> {
         ));
     }
 
+    // Make sure that the work directory has no changes and nothing is staged
+    if !repo.statuses(None)?.is_empty() {
+        return Err(eyre!(
+            "The repository is dirty, aborting. Consider stashing your changes."
+        ));
+    }
+
     let onto_branch = match opts.onto {
         Some(b) => b,
         None => {
@@ -125,7 +132,6 @@ fn run() -> Result<(), Report> {
         opts.branch
     );
 
-    // TODO: What to do if the index or working dir is dirty?
     if !opts.keep {
         // Equivalent to git reset --hard HEAD~1
         if fix_commit.parent_count() != 1 {
