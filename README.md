@@ -33,6 +33,9 @@ the original branch.
    - With `--onto <branch>` you can modify the branch from which `<new_branch>`
      is based-off.
    - With `--keep` you can keep the last commit on the current branch.
+   - If `--keep` is not given, the commit will be removed from the current
+     branch. This is only safely possible if there are no local modifications.
+     Add `--stash` if you have local changes that you want to temporarily stash.
 
 The new commit and the new branch are both created in memory. This means your
 working directory will not be modified. Unless `--keep` is provided, the staged
@@ -50,7 +53,6 @@ cargo install git-quickfix
 
 ## Known Issues
 
-- A dirty index or modified working directory will likely not work.
 - Default branches from origin are picked up through a hard-coded list. Patches
   welcome.
 
