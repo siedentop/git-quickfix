@@ -63,6 +63,12 @@ struct Opt {
         short = "o"
     )]
     onto: Option<String>,
+    #[structopt(
+        help = "Overwrite the new branch, if it exists.",
+        long = "force",
+        short = "f"
+    )]
+    force: bool,
 }
 
 fn run() -> Result<(), Report> {
@@ -94,15 +100,20 @@ fn run() -> Result<(), Report> {
         }
     };
 
-    // Cherry-pick the HEAD onto the main branch but in memory.
-    // Then create a new branch with that cherry-picked commit.
-    let fix_commit = repo.head()?.peel_to_commit()?;
-
     let main_commit = repo
         .revparse(&onto_branch)?
         .from()
         .unwrap()
         .peel_to_commit()?;
+
+    // Create the new branch
+    let new_branch = repo
+        .branch(&opts.branch, &main_commit, opts.force)
+        .suggestion("Consider using --force to overwrite the existing branch")?;
+
+    // Cherry-pick the HEAD onto the main branch but in memory.
+    // Then create a new branch with that cherry-picked commit.
+    let fix_commit = repo.head()?.peel_to_commit()?;
 
     // Cherry-pick (in memory)
     let mut index = repo.cherrypick_commit(&fix_commit, &main_commit, 0, None)?;
@@ -118,7 +129,7 @@ fn run() -> Result<(), Report> {
 
     let commit_oid = repo
         .commit(
-            Some(&format!("refs/heads/{}", opts.branch)),
+            new_branch.get().name(),
             &fix_commit.author(),
             &signature,
             message,
