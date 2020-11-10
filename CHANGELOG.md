@@ -6,6 +6,21 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## Unreleased
+
+### Fixed
+
+- Prevent loss of data in case of uncommitted changes. I profoundly apologize to
+  the effected user. [PR#2](https://github.com/siedentop/git-quickfix/pull/2).
+  Thanks to Sebastian Buck (@betwo) for the changes.
+
+### Added
+
+- Option `--force` overwrites an existing branch. (Use `git reflog` in case of
+  inadvertent use.)
+- Option `--stash` auto stashes unstaged changes. Thanks to Sebastian Buck
+  (@betwo) for the idea and implementation.
+
 ## [0.0.3] - 2020-10-03
 
 ### Removed
