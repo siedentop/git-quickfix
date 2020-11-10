@@ -1,6 +1,6 @@
 use std::process;
 
-use git2::{self, Repository, ResetType};
+use git2::{self, Repository, RepositoryState, ResetType};
 use process::Command;
 
 use color_eyre::{eyre::Report, eyre::Result, Section};
@@ -63,28 +63,46 @@ struct Opt {
         short = "o"
     )]
     onto: Option<String>,
+    #[structopt(
+        help = "Overwrite the new branch, if it exists.",
+        long = "force",
+        short = "f"
+    )]
+    force: bool,
+    #[structopt(
+        help = "Automatically stash changes before modifying the current branch.",
+        long = "stash",
+        short = "s"
+    )]
+    stash: bool,
 }
 
-fn run() -> Result<(), Report> {
-    let opts = Opt::from_args();
-    let repo = Repository::open_from_env()?;
-
-    let onto_branch = match opts.onto {
-        Some(b) => b,
+fn cherrypick_commit_onto_new_branch(repo: &Repository, opts: &Opt) -> Result<(), Report> {
+    let onto_branch = match &opts.onto {
+        Some(b) => b.clone(),
         None => {
             get_default_branch(&repo).suggestion("Manually set the target branch with `--onto`.")?
         }
     };
-
-    // Cherry-pick the HEAD onto the main branch but in memory.
-    // Then create a new branch with that cherry-picked commit.
-    let fix_commit = repo.head()?.peel_to_commit()?;
 
     let main_commit = repo
         .revparse(&onto_branch)?
         .from()
         .unwrap()
         .peel_to_commit()?;
+
+    // Create the new branch
+    let new_branch = repo
+        .branch(&opts.branch, &main_commit, opts.force)
+        .suggestion("Consider using --force to overwrite the existing branch")?;
+
+    // Cherry-pick the HEAD onto the main branch but in memory.
+    // Then create a new branch with that cherry-picked commit.
+    let fix_commit = repo.head()?.peel_to_commit()?;
+    if fix_commit.parent_count() != 1 {
+        return Err(eyre!("Only works with non-merge commits"))
+            .suggestion("Quickfixing a merge commit is not supported. If you meant to do this please file a ticket with your usecase.");
+    };
 
     // Cherry-pick (in memory)
     let mut index = repo.cherrypick_commit(&fix_commit, &main_commit, 0, None)?;
@@ -100,7 +118,7 @@ fn run() -> Result<(), Report> {
 
     let commit_oid = repo
         .commit(
-            Some(&format!("refs/heads/{}", opts.branch)),
+            new_branch.get().name(),
             &fix_commit.author(),
             &signature,
             message,
@@ -116,28 +134,84 @@ fn run() -> Result<(), Report> {
         opts.branch
     );
 
-    // TODO: What to do if the index or working dir is dirty?
-    if !opts.keep {
-        // Equivalent to git reset --hard HEAD~1
-        if fix_commit.parent_count() != 1 {
-            return Err(eyre!("Only works with non-merge commits"))
-                .suggestion("Quickfixing a merge commit is not supported. If you meant to do this please file a ticket with your usecase.");
-        };
-        let head_1 = fix_commit.parent(0)?;
-        repo.reset(&head_1.as_object(), ResetType::Hard, None)?;
+    Ok(())
+}
+
+fn remove_commit(repo: &mut Repository, opts: &Opt, is_dirty: bool) -> Result<(), Report> {
+    if is_dirty {
+        // We should only get here if stashing is enabled
+        assert!(opts.stash);
+
+        // Stash everything
+        repo.stash_save(&repo.signature().unwrap(), "auto-stash: quickfix", None)?;
+    }
+    // Equivalent to git reset --hard HEAD~1
+    let head_1 = repo.head()?.peel_to_commit()?.parent(0)?;
+    repo.reset(&head_1.as_object(), ResetType::Hard, None)?;
+    drop(head_1);
+
+    if is_dirty {
+        // apply the staged changes
+        repo.stash_apply(0, None)?;
     }
 
+    Ok(())
+}
+
+fn push_new_commit(_repo: &Repository, opts: &Opt) -> Result<(), Report> {
     // TODO: Use git2 instead of Command.
-    if opts.push {
-        log::info!("Pushing new branch to origin.");
-        let status = Command::new("git")
-            .args(&["push", "--set-upstream", "origin", &opts.branch])
-            .status()?;
-        if !status.success() {
-            eyre!("Failed to run git push. {}", status);
-        } else {
-            log::info!("Git push succeeded");
+    log::info!("Pushing new branch to origin.");
+    let status = Command::new("git")
+        .args(&["push", "--set-upstream", "origin", &opts.branch])
+        .status()?;
+    if !status.success() {
+        eyre!("Failed to run git push. {}", status);
+    } else {
+        log::info!("Git push succeeded");
+    }
+
+    Ok(())
+}
+
+fn can_commit_be_kept(repo: &Repository, opts: &Opt) -> Result<bool, Report> {
+    if opts.keep {
+        // If we keep the commit, the repository state does not matter
+        Ok(true)
+    } else {
+        // Make sure that no rebase / cherry-pick / merge is in progress
+        let state = repo.state();
+        if state != RepositoryState::Clean {
+            return Err(eyre!(
+                "The repository is currently not in a clean state ({:?}).",
+                state
+            ));
         }
+
+        let is_dirty = !repo.statuses(None)?.is_empty();
+        if is_dirty && !opts.stash {
+            // Make sure that the work directory has no changes and nothing is staged
+            return Err(eyre!(
+                "The repository is dirty, aborting. Consider auto-stashing your changes with --stash."
+            ));
+        }
+        Ok(is_dirty)
+    }
+}
+
+fn run() -> Result<(), Report> {
+    let opts = Opt::from_args();
+    let mut repo = Repository::open_from_env()?;
+
+    let is_dirty = can_commit_be_kept(&repo, &opts)?;
+
+    cherrypick_commit_onto_new_branch(&repo, &opts)?;
+
+    if !opts.keep {
+        remove_commit(&mut repo, &opts, is_dirty)?
+    }
+
+    if opts.push {
+        push_new_commit(&repo, &opts)?;
     }
 
     Ok(())
