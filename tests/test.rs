@@ -1,9 +1,44 @@
 use assert_cmd::Command;
 use structopt::clap::crate_name;
-use tempdir::TempDir;
 
 fn git_qf_binary() -> Command {
     Command::cargo_bin(crate_name!()).unwrap()
+}
+
+mod gitmock {
+    type Oid = (String);
+
+    struct Commit {
+        parent: Option<Oid>,
+    }
+    struct Branch {
+        name: String,
+    }
+    struct Repo {}
+
+    use std::process::Command;
+
+    use tempdir::TempDir;
+    pub fn setup() -> TempDir {
+        let dir = TempDir::new("quickfix").unwrap();
+
+        let out = Command::new("git")
+            .current_dir(dir.path())
+            .arg("init")
+            .output()
+            .unwrap();
+        println!("Output: {:?}, {:?}", out, dir.path().to_string_lossy());
+        assert!(out.status.success(), "Failed to init git repo. {:?}", out);
+
+        dir
+    }
+}
+
+#[test]
+fn basic_run() {
+    let dir = gitmock::setup();
+    println!("Dir: {:?}", dir);
+    assert_eq!(4, 3);
 }
 
 // Require that
