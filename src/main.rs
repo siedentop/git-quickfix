@@ -18,6 +18,43 @@ fn main() -> Result<()> {
     Ok(())
 }
 
+fn run() -> Result<(), Report> {
+    let opts = Opt::from_args();
+    let mut repo = Repository::open_from_env()?;
+
+    assure_repo_in_normal_state(&repo)?;
+
+    // TODO: Make this an integration test.
+    // assert:
+    // * keep is true.
+    // * OR: repo is clean.
+    // *     OR: stash is enabled
+
+    if opts.keep {
+        cherrypick_commit_onto_new_branch(&repo, &opts)?;
+    } else {
+        if opts.stash {
+            let stash = repo.stash_save(&repo.signature()?, "quickfix: auto-stash", None)?;
+            log::debug!("Stashed to object {}", stash);
+        }
+        assure_workspace_is_clean(&repo)
+            .suggestion("Consider auto-stashing your changes with --stash")?;
+        cherrypick_commit_onto_new_branch(&repo, &opts)?;
+        remove_commit_from_head(&mut repo)?;
+
+        if opts.stash {
+            // NOTE: It would be good to verify that the right stash is popped.
+            repo.stash_pop(0, None)?;
+        }
+    }
+
+    if opts.push {
+        push_new_commit(&repo, &opts.branch)?;
+    }
+
+    Ok(())
+}
+
 /// This cherry-picks a commit onto a new branch crated from default branch.
 /// A typical use case is when one wants to quickly create a fix without leaving
 /// the current branch. The quickfix-commit will then be cherry-picked onto a new
@@ -101,7 +138,7 @@ fn cherrypick_commit_onto_new_branch(repo: &Repository, opts: &Opt) -> Result<()
     let fix_commit = repo.head()?.peel_to_commit()?;
     if fix_commit.parent_count() != 1 {
         return Err(eyre!("Only works with non-merge commits"))
-            .suggestion("Quickfixing a merge commit is not supported. If you meant to do this please file a ticket with your usecase.");
+            .suggestion("Quickfixing a merge commit is not supported. If you meant to do this please file a ticket with your use case.");
     };
 
     // Cherry-pick (in memory)
@@ -126,7 +163,7 @@ fn cherrypick_commit_onto_new_branch(repo: &Repository, opts: &Opt) -> Result<()
             &[&main_commit],
         )
         .suggestion(
-            "You cannot provide an existing branch name. Choose a new branch name or run with.",
+            "You cannot provide an existing branch name. Choose a new branch name or run with '--force'.",
         )?; // TODO: How do I make sure this suggestion only gets shown if ErrorClass==Object and ErrorCode==-15?
     log::debug!(
         "Wrote quickfixed changes to new commit {} and new branch {}",
@@ -137,32 +174,22 @@ fn cherrypick_commit_onto_new_branch(repo: &Repository, opts: &Opt) -> Result<()
     Ok(())
 }
 
-fn remove_commit(repo: &mut Repository, opts: &Opt, is_dirty: bool) -> Result<(), Report> {
-    if is_dirty {
-        // We should only get here if stashing is enabled
-        assert!(opts.stash);
-
-        // Stash everything
-        repo.stash_save(&repo.signature().unwrap(), "auto-stash: quickfix", None)?;
-    }
+/// Removes the last commit from the current branch.
+fn remove_commit_from_head(repo: &mut Repository) -> Result<(), Report> {
     // Equivalent to git reset --hard HEAD~1
     let head_1 = repo.head()?.peel_to_commit()?.parent(0)?;
     repo.reset(&head_1.as_object(), ResetType::Hard, None)?;
-    drop(head_1);
-
-    if is_dirty {
-        // apply the staged changes
-        repo.stash_apply(0, None)?;
-    }
 
     Ok(())
 }
 
-fn push_new_commit(_repo: &Repository, opts: &Opt) -> Result<(), Report> {
+/// Pushes <branch> as new branch to `origin`. Other remote names are currently
+/// not supported. If there is a need, please let us know.
+fn push_new_commit(_repo: &Repository, branch: &str) -> Result<(), Report> {
     // TODO: Use git2 instead of Command.
     log::info!("Pushing new branch to origin.");
     let status = Command::new("git")
-        .args(&["push", "--set-upstream", "origin", &opts.branch])
+        .args(&["push", "--set-upstream", "origin", branch])
         .status()?;
     if !status.success() {
         eyre!("Failed to run git push. {}", status);
@@ -173,50 +200,33 @@ fn push_new_commit(_repo: &Repository, opts: &Opt) -> Result<(), Report> {
     Ok(())
 }
 
-fn can_commit_be_kept(repo: &Repository, opts: &Opt) -> Result<bool, Report> {
-    if opts.keep {
-        // If we keep the commit, the repository state does not matter
-        Ok(true)
-    } else {
-        // Make sure that no rebase / cherry-pick / merge is in progress
-        let state = repo.state();
-        if state != RepositoryState::Clean {
-            return Err(eyre!(
-                "The repository is currently not in a clean state ({:?}).",
-                state
-            ));
-        }
-
-        let is_dirty = !repo.statuses(None)?.is_empty();
-        if is_dirty && !opts.stash {
-            // Make sure that the work directory has no changes and nothing is staged
-            return Err(eyre!(
-                "The repository is dirty, aborting. Consider auto-stashing your changes with --stash."
-            ));
-        }
-        Ok(is_dirty)
-    }
-}
-
-fn run() -> Result<(), Report> {
-    let opts = Opt::from_args();
-    let mut repo = Repository::open_from_env()?;
-
-    let is_dirty = can_commit_be_kept(&repo, &opts)?;
-
-    cherrypick_commit_onto_new_branch(&repo, &opts)?;
-
-    if !opts.keep {
-        remove_commit(&mut repo, &opts, is_dirty)?
-    }
-
-    if opts.push {
-        push_new_commit(&repo, &opts)?;
+/// Checks that repo is in "RepositoryState::Clean" state. This means there is
+/// no rebase, cherry-pick, merge, etc is in progress. Confusingly, this is different
+/// from no uncommitted or staged changes being present in the repo. For this,
+/// see [fn.assure_repo_is_clean].
+fn assure_repo_in_normal_state(repo: &Repository) -> Result<()> {
+    let state = repo.state();
+    if state != RepositoryState::Clean {
+        return Err(eyre!(
+            "The repository is currently not in a clean state ({:?}).",
+            state
+        ));
     }
 
     Ok(())
 }
 
+/// Checks that the workspace is clean. (No staged or unstaged changes.)
+fn assure_workspace_is_clean(repo: &Repository) -> Result<()> {
+    let is_dirty = !repo.statuses(None)?.is_empty();
+    if is_dirty {
+        Err(eyre!("The repository is dirty."))
+    } else {
+        Ok(())
+    }
+}
+
+/// A hacky way to resolve the default branch name on the 'origin' remote.
 fn get_default_branch(repo: &Repository) -> Result<String, Report> {
     // NOTE: Unfortunately, I cannot use repo.find_remote().default_branch() because it requires a connect() before.
     // Furthermore, a lot is to be said about returning a Reference or a Revspec instead of a String.
