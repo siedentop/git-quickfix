@@ -1,10 +1,10 @@
-use std::process;
-
-use git2::{self, Repository, RepositoryState, ResetType};
-use process::Command;
+use git2::{self, Repository};
+use git_quickfix::{
+    assure_repo_in_normal_state, cherrypick_commit_onto_new_branch, get_default_branch,
+    push_new_commit, stash, wrapper_pick_and_clean,
+};
 
 use color_eyre::{eyre::Report, eyre::Result, Section};
-use eyre::eyre;
 use structopt::StructOpt;
 
 extern crate log;
@@ -22,6 +22,15 @@ fn run() -> Result<(), Report> {
     let opts = Opt::from_args();
     let mut repo = Repository::open_from_env()?;
 
+    let onto_branch = match &opts.onto {
+        Some(b) => b.clone(),
+        None => {
+            get_default_branch(&repo).suggestion("Manually set the target branch with `--onto`.")?
+        }
+    };
+
+    let target_branch = opts.branch;
+
     assure_repo_in_normal_state(&repo)?;
 
     // TODO: Make this an integration test.
@@ -31,45 +40,22 @@ fn run() -> Result<(), Report> {
     // *     OR: stash is enabled
 
     if opts.keep {
-        cherrypick_commit_onto_new_branch(&repo, &opts)?;
+        cherrypick_commit_onto_new_branch(&repo, &target_branch, &onto_branch, opts.force)?;
     } else {
         let stashed = if opts.stash { stash(&mut repo)? } else { false };
-        assure_workspace_is_clean(&repo)
-            .suggestion("Consider auto-stashing your changes with --stash.")
-            .suggestion("Running this again with RUST_LOG=debug provides more details.")?;
-        cherrypick_commit_onto_new_branch(&repo, &opts)?;
-        remove_commit_from_head(&mut repo)?;
 
+        let result = wrapper_pick_and_clean(&repo, &target_branch, &onto_branch, opts.force);
         if stashed {
-            // NOTE: It would be good to verify that the right stash is popped.
-            // TODO: Use a StashContext that pop the stash correctly, even if something else fails.
-            repo.stash_pop(0, None)?;
-        }
+            repo.stash_pop(0, None)?
+        };
+        let _ = result?;
     }
 
     if opts.push {
-        push_new_commit(&repo, &opts.branch)?;
+        push_new_commit(&repo, &target_branch)?;
     }
 
     Ok(())
-}
-
-/// Returns Ok(true) if stashing was successful. Ok(false) if stashing was not needed.
-fn stash(repo: &mut Repository) -> Result<bool> {
-    match repo.stash_save(&repo.signature()?, "quickfix: auto-stash", None) {
-        Ok(stash) => {
-            log::debug!("Stashed to object {}", stash);
-            Ok(true)
-        }
-        Err(e) => {
-            // Accept if there is nothing to stash.
-            if e.code() == git2::ErrorCode::NotFound && e.class() == git2::ErrorClass::Stash {
-                Ok(false)
-            } else {
-                Err(eyre!("{}", e.message()))
-            }
-        }
-    }
 }
 
 /// This cherry-picks a commit onto a new branch crated from default branch.
@@ -88,13 +74,13 @@ fn stash(repo: &mut Repository) -> Result<bool> {
 /// 3. The changes will be removed from the current branch, unless `--keep` was given to quickfix.
 ///
 /// Benefits: Quickly provide unrelated fixes without having to abandon the current branch and switching branches.
-
 #[derive(Debug, StructOpt)]
 #[structopt(
     name = "git-quickfix",
     about = "Apply patches directly to the main branch.",
     verbatim_doc_comment
 )]
+
 struct Opt {
     #[structopt(help = "The new branch name where the quickfix ends up on.")]
     branch: String,
@@ -128,138 +114,4 @@ struct Opt {
         short = "s"
     )]
     stash: bool,
-}
-
-fn cherrypick_commit_onto_new_branch(repo: &Repository, opts: &Opt) -> Result<(), Report> {
-    let onto_branch = match &opts.onto {
-        Some(b) => b.clone(),
-        None => {
-            get_default_branch(&repo).suggestion("Manually set the target branch with `--onto`.")?
-        }
-    };
-
-    let main_commit = repo
-        .revparse(&onto_branch)?
-        .from()
-        .unwrap()
-        .peel_to_commit()?;
-
-    // Create the new branch
-    let new_branch = repo
-        .branch(&opts.branch, &main_commit, opts.force)
-        .suggestion("Consider using --force to overwrite the existing branch")?;
-
-    // Cherry-pick the HEAD onto the main branch but in memory.
-    // Then create a new branch with that cherry-picked commit.
-    let fix_commit = repo.head()?.peel_to_commit()?;
-    if fix_commit.parent_count() != 1 {
-        return Err(eyre!("Only works with non-merge commits"))
-            .suggestion("Quickfixing a merge commit is not supported. If you meant to do this please file a ticket with your use case.");
-    };
-
-    // Cherry-pick (in memory)
-    let mut index = repo.cherrypick_commit(&fix_commit, &main_commit, 0, None)?;
-    let tree_oid = index.write_tree_to(&repo)?;
-    let tree = repo.find_tree(tree_oid)?;
-
-    // The author is copied from the original commit. But the committer is set to the current user and timestamp.
-    let signature = repo.signature()?;
-    let message = fix_commit
-        .message_raw()
-        .ok_or_else(|| eyre!("Could not read the commit message."))
-        .suggestion("Make sure the commit message contains only UTF-8 characters or try to manually cherry-pick the commit.")?;
-
-    let commit_oid = repo
-        .commit(
-            new_branch.get().name(),
-            &fix_commit.author(),
-            &signature,
-            message,
-            &tree,
-            &[&main_commit],
-        )
-        .suggestion(
-            "You cannot provide an existing branch name. Choose a new branch name or run with '--force'.",
-        )?; // TODO: How do I make sure this suggestion only gets shown if ErrorClass==Object and ErrorCode==-15?
-    log::debug!(
-        "Wrote quickfixed changes to new commit {} and new branch {}",
-        commit_oid,
-        opts.branch
-    );
-
-    Ok(())
-}
-
-/// Removes the last commit from the current branch.
-fn remove_commit_from_head(repo: &mut Repository) -> Result<(), Report> {
-    // Equivalent to git reset --hard HEAD~1
-    let head_1 = repo.head()?.peel_to_commit()?.parent(0)?;
-    repo.reset(&head_1.as_object(), ResetType::Hard, None)?;
-
-    Ok(())
-}
-
-/// Pushes <branch> as new branch to `origin`. Other remote names are currently
-/// not supported. If there is a need, please let us know.
-fn push_new_commit(_repo: &Repository, branch: &str) -> Result<(), Report> {
-    // TODO: Use git2 instead of Command.
-    log::info!("Pushing new branch to origin.");
-    let status = Command::new("git")
-        .args(&["push", "--set-upstream", "origin", branch])
-        .status()?;
-    if !status.success() {
-        eyre!("Failed to run git push. {}", status);
-    } else {
-        log::info!("Git push succeeded");
-    }
-
-    Ok(())
-}
-
-/// Checks that repo is in "RepositoryState::Clean" state. This means there is
-/// no rebase, cherry-pick, merge, etc is in progress. Confusingly, this is different
-/// from no uncommitted or staged changes being present in the repo. For this,
-/// see [fn.assure_repo_is_clean].
-fn assure_repo_in_normal_state(repo: &Repository) -> Result<()> {
-    let state = repo.state();
-    if state != RepositoryState::Clean {
-        return Err(eyre!(
-            "The repository is currently not in a clean state ({:?}).",
-            state
-        ));
-    }
-
-    Ok(())
-}
-
-/// Checks that the workspace is clean. (No staged or unstaged changes.)
-fn assure_workspace_is_clean(repo: &Repository) -> Result<()> {
-    let mut options = git2::StatusOptions::new();
-    options.include_ignored(false);
-    let statuses = repo.statuses(Some(&mut options))?;
-    for s in statuses.iter() {
-        log::warn!("Dirty: {:?} -- {:?}", s.path(), s.status());
-    }
-    let is_dirty = !statuses.is_empty();
-    if is_dirty {
-        Err(eyre!("The repository is dirty."))
-    } else {
-        Ok(())
-    }
-}
-
-/// A hacky way to resolve the default branch name on the 'origin' remote.
-fn get_default_branch(repo: &Repository) -> Result<String, Report> {
-    // NOTE: Unfortunately, I cannot use repo.find_remote().default_branch() because it requires a connect() before.
-    // Furthermore, a lot is to be said about returning a Reference or a Revspec instead of a String.
-    for name in ["origin/main", "origin/master", "origin/devel"].iter() {
-        match repo.resolve_reference_from_short_name(name) {
-            Ok(_) => {
-                log::debug!("Found {} as the default remote branch. A bit hacky -- wrong results certainly possible.", name);
-                return Ok(name.to_string());
-            }
-            Err(_) => continue,
-        }
-    }
-    Err(eyre!("Could not find remote default branch."))
 }
