@@ -15,3 +15,5 @@ fn git_qf_binary() -> Command {
 // Test from a subdirectory.
 
 // Error if branch already exist? Unless --force is given.
+
+// Test with untracked changes present.

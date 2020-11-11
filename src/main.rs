@@ -38,7 +38,8 @@ fn run() -> Result<(), Report> {
             log::debug!("Stashed to object {}", stash);
         }
         assure_workspace_is_clean(&repo)
-            .suggestion("Consider auto-stashing your changes with --stash")?;
+            .suggestion("Consider auto-stashing your changes with --stash.")
+            .suggestion("Running this again with RUST_LOG=debug provides more details.")?;
         cherrypick_commit_onto_new_branch(&repo, &opts)?;
         remove_commit_from_head(&mut repo)?;
 
@@ -217,7 +218,13 @@ fn assure_repo_in_normal_state(repo: &Repository) -> Result<()> {
 
 /// Checks that the workspace is clean. (No staged or unstaged changes.)
 fn assure_workspace_is_clean(repo: &Repository) -> Result<()> {
-    let is_dirty = !repo.statuses(None)?.is_empty();
+    let mut options = git2::StatusOptions::new();
+    options.include_ignored(false);
+    let statuses = repo.statuses(Some(&mut options))?;
+    for s in statuses.iter() {
+        log::warn!("Dirty: {:?} -- {:?}", s.path(), s.status());
+    }
+    let is_dirty = !statuses.is_empty();
     if is_dirty {
         Err(eyre!("The repository is dirty."))
     } else {
