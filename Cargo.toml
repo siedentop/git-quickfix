@@ -30,9 +30,9 @@ opt-level = "z"
 git2 = "0.13"
 structopt = "0.3"
 color-eyre = { version = "0.5", default-features = false }
-eyre = "0.6.1"
+eyre = "0.6.3"
 log = "0.4.11"
-env_logger = "0.7.1"
+env_logger = "0.8.1"
 
 [dev-dependencies]
 assert_cmd = "1.0.1"
