@@ -17,3 +17,6 @@ fn git_qf_binary() -> Command {
 // Error if branch already exist? Unless --force is given.
 
 // Test with untracked changes present.
+
+// Test that the stash-list is not touched afterwards if the --stash option is used, and if it is not used.
+// Test that stashing and a subsequent error leaves the repo untouched (i.e. the stash is popped).
