@@ -79,9 +79,8 @@ fn run() -> Result<(), Report> {
     verbatim_doc_comment
 )]
 struct Opt {
+    #[structopt(help = "The new branch name where the quickfix ends up on.")]
     branch: String,
-    #[structopt(short = "m", long = "message", help = "Commit message")]
-    message: Option<String>,
     #[structopt(
         long = "push",
         short = "u",
@@ -95,7 +94,7 @@ struct Opt {
     )]
     keep: bool,
     #[structopt(
-        help = "The branch to apply the patch onto. Defaults to the default branch on origin (e.g. origin/main).",
+        help = "The starting point onto which the quickfix gets applied. Defaults to the default branch on origin (e.g. origin/main).",
         long = "onto",
         short = "o"
     )]
