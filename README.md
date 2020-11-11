@@ -1,6 +1,6 @@
 # Git QuickFix
 
-Quickfix allows you to commit changes in your git repository to a new branch
+_Quickfix_ allows you to commit changes in your git repository to a new branch
 without leaving the current branch.
 
 ## Motivation
@@ -15,8 +15,8 @@ the original branch.
 - Minimize context switching.
 - Much quicker on large repositories, where branch switching takes significant
   time.
-- Everything happens in memory, so tools watching the file system will not get
-  confused.
+- Everything happens in memory, so tools and IDEs watching the file system will
+  not get confused.
 
 ## How it works
 
@@ -37,11 +37,8 @@ the original branch.
      branch. This is only safely possible if there are no local modifications.
      Add `--stash` if you have local changes that you want to temporarily stash.
 
-The new commit and the new branch are both created in memory. This means your
-working directory will not be modified. Unless `--keep` is provided, the staged
-changes will be removed.
-
-You can also use the alias **qf**: `git qf`.
+The cherry-pick is done in memory. This means your working directory will not be
+modified. Unless `--keep` is provided, the quickfix commit will be removed.
 
 ## Installation
 
@@ -54,10 +51,33 @@ cargo install git-quickfix
 ## Known Issues
 
 - Default branches from origin are picked up through a hard-coded list. Patches
-  welcome.
+  welcome. If the default branch on the remote is not called main, master or
+  devel, you have to supply it manually. Similarly, if the remote is not called
+  'origin' similar issues will occur. Please [create an issue][ticket] if this
+  bothers you.
 
-### TODO
-
-- Add Github action
-- `--push` currently use the Shell to push the changes. Benefits: All proxy,
+- Won't fix: `--push` use the shell to push the changes. Benefits: All proxy,
   auth and other configs are picked up. But if does not feel right.
+
+[ticket]: https://github.com/siedentop/git-quickfix/issues/new/choose
+
+## FAQ
+
+- _Can it handle multiple commits?_ -- No. I am trying to keep the tool simple.
+  However, I originally started with this. If you see a need, please [create a
+  feature request][ticket].
+- _Are commit hooks_ considered? -- Not really. While the original commit will
+  have pre- and post-commit hooks run, the cherry-pick itself does not run the
+  pre-commit hook. As far as I understand, this may be the git [behavior][1], or
+  maybe [not][2]? None of it matters, as libgit2 does [not support][3] hooks. If
+  you have a use for a particular git-hook, please create a [new
+  ticket][ticket].
+- _How does this work?_ -- _libgit2_ provides a raw cherry-pick method. This
+  works in-memory, meaning that the working directory (i.e. the checked out
+  files) can be left untouched. This method returns a raw Index object, which I
+  use to create a new commit.
+
+[1]: http://git.661346.n2.nabble.com/cherry-pick-pre-commit-hook-td5815961.html
+[2]:
+  https://public-inbox.org/git/CAPig+cTT11J00aRO1gO06O6j5zdf4y6XRJhG5X7ZFeP6n7TOGQ@mail.gmail.com/T/
+[3]: https://github.com/libgit2/libgit2/issues/964

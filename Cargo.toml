@@ -1,6 +1,6 @@
 [package]
 name = "git-quickfix"
-version = "0.0.3"
+version = "0.0.4"
 authors = ["Christoph Siedentop <cargo@siedentop.name>"]
 edition = "2018"
 license = "GPL-3.0"
