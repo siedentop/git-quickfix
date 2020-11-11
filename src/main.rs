@@ -33,18 +33,16 @@ fn run() -> Result<(), Report> {
     if opts.keep {
         cherrypick_commit_onto_new_branch(&repo, &opts)?;
     } else {
-        if opts.stash {
-            let stash = repo.stash_save(&repo.signature()?, "quickfix: auto-stash", None)?;
-            log::debug!("Stashed to object {}", stash);
-        }
+        let stashed = if opts.stash { stash(&mut repo)? } else { false };
         assure_workspace_is_clean(&repo)
             .suggestion("Consider auto-stashing your changes with --stash.")
             .suggestion("Running this again with RUST_LOG=debug provides more details.")?;
         cherrypick_commit_onto_new_branch(&repo, &opts)?;
         remove_commit_from_head(&mut repo)?;
 
-        if opts.stash {
+        if stashed {
             // NOTE: It would be good to verify that the right stash is popped.
+            // TODO: Use a StashContext that pop the stash correctly, even if something else fails.
             repo.stash_pop(0, None)?;
         }
     }
@@ -54,6 +52,24 @@ fn run() -> Result<(), Report> {
     }
 
     Ok(())
+}
+
+/// Returns Ok(true) if stashing was successful. Ok(false) if stashing was not needed.
+fn stash(repo: &mut Repository) -> Result<bool> {
+    match repo.stash_save(&repo.signature()?, "quickfix: auto-stash", None) {
+        Ok(stash) => {
+            log::debug!("Stashed to object {}", stash);
+            Ok(true)
+        }
+        Err(e) => {
+            // Accept if there is nothing to stash.
+            if e.code() == git2::ErrorCode::NotFound && e.class() == git2::ErrorClass::Stash {
+                Ok(false)
+            } else {
+                Err(eyre!("{}", e.message()))
+            }
+        }
+    }
 }
 
 /// This cherry-picks a commit onto a new branch crated from default branch.
