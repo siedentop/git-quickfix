@@ -44,6 +44,8 @@ modified. Unless `--keep` is provided, the quickfix commit will be removed.
 
 You can use Cargo to install quickfix.
 
+Cargo is available for all major platforms. How to install Cargo is described here: https://doc.rust-lang.org/cargo/getting-started/installation.html
+
 ```shell
 cargo install git-quickfix
 ```
