@@ -165,7 +165,7 @@ pub fn get_default_branch(repo: &Repository) -> Result<String, Report> {
 /// Returns Ok(true) if stashing was successful. Ok(false) if stashing was not needed.
 pub fn stash(repo: &mut Repository) -> Result<bool> {
     let signature = repo.signature()?;
-    // Apiologies for this code. This is just a fancy way of filtering out the (Stash, NotFound) error.
+    // Apologies for this code. This is just a fancy way of filtering out the (Stash, NotFound) error.
     let stashed = match repo.stash_save(&signature, "quickfix: auto-stash", None) {
         Ok(stash) => {
             log::debug!("Stashed to object {}", stash);
