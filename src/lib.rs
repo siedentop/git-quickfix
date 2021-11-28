@@ -1,5 +1,6 @@
 use eyre::{eyre, Result};
 use std::process;
+use std::str::from_utf8;
 
 use git2::{self, Repository, RepositoryState, ResetType};
 use process::Command;
@@ -57,7 +58,17 @@ pub fn cherrypick_commit_onto_new_branch(
 
     // Cherry-pick (in memory)
     let mut index = repo.cherrypick_commit(&fix_commit, &main_commit, 0, None)?;
-    let tree_oid = index.write_tree_to(&repo)?;
+    if index.has_conflicts() {
+        let conflicts = index.conflicts()?;
+        for conflict in conflicts {
+            let our_path = conflict?.our.unwrap().path;
+            let our = from_utf8(&our_path);
+            log::error!("Conflict: {:?}", our);
+        }
+    }
+    let tree_oid = index
+        .write_tree_to(&repo)
+        .suggestion("Could not write tree. Probably a merge conflict.")?;
     let tree = repo.find_tree(tree_oid)?;
 
     // The author is copied from the original commit. But the committer is set to the current user and timestamp.

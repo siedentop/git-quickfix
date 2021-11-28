@@ -1,11 +1,3 @@
-use assert_cmd::Command;
-use structopt::clap::crate_name;
-use tempdir::TempDir;
-
-fn git_qf_binary() -> Command {
-    Command::cargo_bin(crate_name!()).unwrap()
-}
-
 // Require that
 // 1) There shall be afterwards a branch. The commits should be going backwards: (1) the content is the same as the cherry-pick commit. (2) the next commit is the same as origin/main
 // 2) The original quickfix commit should not be present on the original branch. (and opposite if --keep is provided)
