@@ -110,7 +110,7 @@ struct Opt {
     force: bool,
     #[structopt(
         help = "Automatically stash changes before modifying the current branch.",
-        long = "stash",
+        long = "autostash",
         short = "s"
     )]
     stash: bool,

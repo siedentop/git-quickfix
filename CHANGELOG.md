@@ -8,6 +8,12 @@ and this project adheres to
 
 <!-- Release Process: https://dev.to/sharkdp/my-release-checklist-for-rust-programs-1m33 -->
 
+## [Upcoming]
+
+### Changed
+
+- The option `--stash` has been renamed to `--autostash`. Issue #9
+
 ## [0.0.4] - 2020-11-10
 
 ### Fixed

@@ -35,7 +35,7 @@ the original branch.
    - With `--keep` you can keep the last commit on the current branch.
    - If `--keep` is not given, the commit will be removed from the current
      branch. This is only safely possible if there are no local modifications.
-     Add `--stash` if you have local changes that you want to temporarily stash.
+     Add `--autostash` if you have local changes that you want to temporarily stash.
 
 The cherry-pick is done in memory. This means your working directory will not be
 modified. Unless `--keep` is provided, the quickfix commit will be removed.
