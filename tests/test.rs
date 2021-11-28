@@ -2,7 +2,7 @@ use assert_cmd::Command;
 use structopt::clap::crate_name;
 use tempdir::TempDir;
 
-fn git_qf_binary() -> Command {
+fn git_quickfix_binary() -> Command {
     Command::cargo_bin(crate_name!()).unwrap()
 }
 

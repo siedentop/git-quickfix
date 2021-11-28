@@ -14,12 +14,17 @@ and this project adheres to
 
 - The option `--stash` has been renamed to `--autostash`. Issue #9
 
+### Removed
+- Removed the `qf` alias. All votes were in favor [1].
+
+[1]: https://github.com/siedentop/git-quickfix/issues/6
+
 ## [0.0.4] - 2020-11-10
 
 ### Fixed
 
 - Prevent loss of data in case of uncommitted changes. I profoundly apologize to
-  the effected user. [PR#2](https://github.com/siedentop/git-quickfix/pull/2).
+  the affected user. [PR#2](https://github.com/siedentop/git-quickfix/pull/2).
   Thanks to Sebastian Buck (@betwo) for the changes.
 
 ### Added
