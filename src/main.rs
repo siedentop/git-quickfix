@@ -35,13 +35,11 @@ fn run() -> Result<(), Report> {
 
     // TODO: Make this an integration test.
     // assert:
-    // * keep is true.
+    // * remove is false.
     // * OR: repo is clean.
     // *     OR: stash is enabled
 
-    if opts.keep {
-        cherrypick_commit_onto_new_branch(&repo, &target_branch, &onto_branch, opts.force)?;
-    } else {
+    if opts.remove {
         let stashed = if opts.stash { stash(&mut repo)? } else { false };
 
         let result = wrapper_pick_and_clean(&repo, &target_branch, &onto_branch, opts.force);
@@ -49,6 +47,8 @@ fn run() -> Result<(), Report> {
             repo.stash_pop(0, None)?
         };
         let _ = result?;
+    } else {
+        cherrypick_commit_onto_new_branch(&repo, &target_branch, &onto_branch, opts.force)?;
     }
 
     if opts.push {
@@ -70,8 +70,7 @@ fn run() -> Result<(), Report> {
 /// 1. Commit the changes
 /// 2. git quickfix <new-branch>. This will create a new branch from the default branch.
 ///     `--push` will directly push this to the `origin` remote.
-///     `--keep` will keep the quickfix commit on the current branch.
-/// 3. The changes will be removed from the current branch, unless `--keep` was given to quickfix.
+///     `--remove` will remove the quickfix commit from the current branch.
 ///
 /// Benefits: Quickly provide unrelated fixes without having to abandon the current branch and switching branches.
 #[derive(Debug, StructOpt)]
@@ -91,11 +90,10 @@ struct Opt {
     )]
     push: bool,
     #[structopt(
-        long = "keep",
-        short = "k",
-        help = "Keep the new quickfix commit on the current branch."
+        long = "remove",
+        help = "Remove the new quickfix commit from the current (original) branch."
     )]
-    keep: bool,
+    remove: bool,
     #[structopt(
         help = "The starting point onto which the quickfix gets applied. Defaults to the default branch on origin (e.g. origin/main).",
         long = "onto",

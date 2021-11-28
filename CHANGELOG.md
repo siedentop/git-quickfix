@@ -12,7 +12,10 @@ and this project adheres to
 
 ### Changed
 
-- The option `--stash` has been renamed to `--autostash`. Issue #9
+- The option `--stash` has been renamed to `--autostash`. [Issue #9](https://github.com/siedentop/git-quickfix/issues/9)
+- The option `--keep` is now the default, and the opposite is now called `--remove`.
+Providing `--remove` will now drop the commit from the original branch. By default, the commit
+stays on the branch. [Issue #10](https://github.com/siedentop/git-quickfix/issues/8)
 
 ### Removed
 - Removed the `qf` alias. All votes were in favor [1].
