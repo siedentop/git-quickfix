@@ -32,13 +32,13 @@ the original branch.
 3. `git quickfix --help` provides more options.
    - With `--onto <branch>` you can modify the branch from which `<new_branch>`
      is based-off.
-   - With `--keep` you can keep the last commit on the current branch.
-   - If `--keep` is not given, the commit will be removed from the current
-     branch. This is only safely possible if there are no local modifications.
-     Add `--autostash` if you have local changes that you want to temporarily stash.
+   - With `--remove` the last commit will be removed from the original branch.
+   - Add `--autostash` if you have local changes that you want to temporarily stash.
 
 The cherry-pick is done in memory. This means your working directory will not be
-modified. Unless `--keep` is provided, the quickfix commit will be removed.
+modified.
+
+The quickfix commit will be kept (changed in v0.0.5) unless `--remove` is provided.
 
 ## Installation
 
