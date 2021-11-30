@@ -83,3 +83,8 @@ cargo install git-quickfix
 [2]:
   https://public-inbox.org/git/CAPig+cTT11J00aRO1gO06O6j5zdf4y6XRJhG5X7ZFeP6n7TOGQ@mail.gmail.com/T/
 [3]: https://github.com/libgit2/libgit2/issues/964
+
+## Related Work
+
+* `git absorb`: https://github.com/tummychow/git-absorb
+* `git trim`: https://github.com/foriequal0/git-trim
