@@ -53,10 +53,10 @@ cargo install git-quickfix
 ## Known Issues
 
 - Default branches from origin are picked up through a hard-coded list. Patches
-  welcome. If the default branch on the remote is not called main, master or
-  devel, you have to supply it manually. Similarly, if the remote is not called
-  'origin' similar issues will occur. Please [create an issue][ticket] if this
-  bothers you.
+  welcome. If the default branch on the remote is not called main, master,
+  devel, or develop, you have to supply it manually. Similarly, if the remote is not
+  called 'origin' you will also have to supply the branch name manually using the
+  `--onto` option. Please [create an issue][ticket] if this bothers you.
 
 - Won't fix: `--push` use the shell to push the changes. Benefits: All proxy,
   auth and other configs are picked up. But if does not feel right.

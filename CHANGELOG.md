@@ -10,6 +10,10 @@ and this project adheres to
 
 ## [Upcoming]
 
+### Added
+
+- Made `develop` (via `origin/develop`) a default target branch, as suggested by @msfjarvis [here](https://github.com/siedentop/git-quickfix/issues/7#issuecomment-791143253).
+
 ## [0.0.5] - 2021-11-29
 
 Thanks to @betwo and @sharkdp for their suggestions on improvements.

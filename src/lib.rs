@@ -150,7 +150,14 @@ fn assure_workspace_is_clean(repo: &Repository) -> Result<()> {
 pub fn get_default_branch(repo: &Repository) -> Result<String, Report> {
     // NOTE: Unfortunately, I cannot use repo.find_remote().default_branch() because it requires a connect() before.
     // Furthermore, a lot is to be said about returning a Reference or a Revspec instead of a String.
-    for name in ["origin/main", "origin/master", "origin/devel"].iter() {
+    for name in [
+        "origin/main",
+        "origin/master",
+        "origin/devel",
+        "origin/develop",
+    ]
+    .iter()
+    {
         match repo.resolve_reference_from_short_name(name) {
             Ok(_) => {
                 log::debug!("Found {} as the default remote branch. A bit hacky -- wrong results certainly possible.", name);
