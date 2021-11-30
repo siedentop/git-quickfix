@@ -10,6 +10,10 @@ and this project adheres to
 
 ## [Upcoming]
 
+## [0.0.5] - 2021-11-29
+
+Thanks to @betwo and @sharkdp for their suggestions on improvements.
+
 ### Changed
 
 - The option `--stash` has been renamed to `--autostash`. [Issue #9](https://github.com/siedentop/git-quickfix/issues/9)
