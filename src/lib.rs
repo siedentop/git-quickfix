@@ -19,11 +19,11 @@ pub fn wrapper_pick_and_clean(
     onto_branch: &str,
     force_new_branch: bool,
 ) -> Result<()> {
-    assure_workspace_is_clean(&repo)
+    assure_workspace_is_clean(repo)
         .suggestion("Consider auto-stashing your changes with --stash.")
         .suggestion("Running this again with RUST_LOG=debug provides more details.")?;
-    cherrypick_commit_onto_new_branch(&repo, target_branch, onto_branch, force_new_branch)?;
-    remove_commit_from_head(&repo)?;
+    cherrypick_commit_onto_new_branch(repo, target_branch, onto_branch, force_new_branch)?;
+    remove_commit_from_head(repo)?;
     Ok(())
 }
 
@@ -57,7 +57,7 @@ pub fn cherrypick_commit_onto_new_branch(
 
     // Cherry-pick (in memory)
     let mut index = repo.cherrypick_commit(&fix_commit, &main_commit, 0, None)?;
-    let tree_oid = index.write_tree_to(&repo)?;
+    let tree_oid = index.write_tree_to(repo)?;
     let tree = repo.find_tree(tree_oid)?;
 
     // The author is copied from the original commit. But the committer is set to the current user and timestamp.
@@ -92,7 +92,7 @@ pub fn cherrypick_commit_onto_new_branch(
 fn remove_commit_from_head(repo: &Repository) -> Result<(), Report> {
     // Equivalent to git reset --hard HEAD~1
     let head_1 = repo.head()?.peel_to_commit()?.parent(0)?;
-    repo.reset(&head_1.as_object(), ResetType::Hard, None)?;
+    repo.reset(head_1.as_object(), ResetType::Hard, None)?;
 
     Ok(())
 }
