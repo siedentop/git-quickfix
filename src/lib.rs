@@ -20,7 +20,7 @@ pub fn wrapper_pick_and_clean(
     force_new_branch: bool,
 ) -> Result<()> {
     assure_workspace_is_clean(repo)
-        .suggestion("Consider auto-stashing your changes with --stash.")
+        .suggestion("Consider auto-stashing your changes with --autostash.")
         .suggestion("Running this again with RUST_LOG=debug provides more details.")?;
     cherrypick_commit_onto_new_branch(repo, target_branch, onto_branch, force_new_branch)?;
     remove_commit_from_head(repo)?;
