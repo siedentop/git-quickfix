@@ -21,12 +21,12 @@ incremental = false
 opt-level = "z"
 
 [dependencies]
-git2 = "0.13"
-structopt = "0.3"
-color-eyre = { version = "0.5", default-features = false }
-eyre = "0.6.3"
-log = "0.4.11"
+color-eyre = { version = "0.6.1", default-features = false }
 env_logger = "0.9.0"
+eyre = "0.6.3"
+git2 = "0.14.4"
+log = "0.4.11"
+structopt = "0.3"
 
 [dev-dependencies]
 assert_cmd = "2.0.2"

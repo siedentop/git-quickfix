@@ -46,7 +46,7 @@ fn run() -> Result<(), Report> {
         if stashed {
             repo.stash_pop(0, None)?
         };
-        let _ = result?;
+        result?;
     } else {
         cherrypick_commit_onto_new_branch(&repo, &target_branch, &onto_branch, opts.force)?;
     }
