@@ -99,11 +99,16 @@ fn remove_commit_from_head(repo: &Repository) -> Result<(), Report> {
 
 /// Pushes <branch> as new branch to `origin`. Other remote names are currently
 /// not supported. If there is a need, please let us know.
-pub fn push_new_commit(_repo: &Repository, branch: &str) -> Result<(), Report> {
+pub fn push_new_commit(repo: &Repository, branch: &str) -> Result<(), Report> {
     // TODO: Use git2 instead of Command.
+    let workdir = repo
+        .workdir()
+        .ok_or_else(|| eyre!("Could not get workdir"))?;
+
     log::info!("Pushing new branch to origin.");
     let status = Command::new("git")
         .args(&["push", "--set-upstream", "origin", branch])
+        .current_dir(workdir)
         .status()?;
     if !status.success() {
         eyre!("Failed to run git push. {}", status);
@@ -146,8 +151,45 @@ fn assure_workspace_is_clean(repo: &Repository) -> Result<()> {
     }
 }
 
-/// A hacky way to resolve the default branch name on the 'origin' remote.
+/// Inspiration from here: https://github.com/siedentop/git-quickfix/issues/11
+/// Essentially: "$(git branch -rl '*/HEAD' | awk '{print $3}')"
+fn get_default_branch_from_head(repo: &Repository) -> Result<String> {
+    let workdir = repo
+        .workdir()
+        .ok_or_else(|| eyre!("Could not get workdir"))?;
+    let output = Command::new("git")
+        .args(&["branch", "-rl", "*/HEAD"])
+        .current_dir(workdir)
+        .output()?;
+    let status = output.status;
+    if !status.success() {
+        return Err(eyre!("Failed to run git branch -rl. {}", status));
+    }
+
+    let output = String::from_utf8_lossy(&output.stdout);
+    let head_reference = output.split("->").nth(1);
+    if let Some(head_reference) = head_reference {
+        let head_reference = head_reference.trim();
+        Ok(head_reference.to_string())
+    } else {
+        Err(eyre!("Could not find a default branch."))
+    }
+}
+
+/// Resolve the default branch name on the 'origin' remote.
+/// First tries looking for where origin/HEAD is pointing to. If that fails
+/// tries a hardcoded list of possible branches.
 pub fn get_default_branch(repo: &Repository) -> Result<String, Report> {
+    match get_default_branch_from_head(repo) {
+        Ok(branch) => return Ok(branch),
+        Err(e) => {
+            log::debug!(
+                "Failed to get default branch from HEAD: {}. Using hardcoded branches",
+                e
+            );
+        }
+    }
+
     // NOTE: Unfortunately, I cannot use repo.find_remote().default_branch() because it requires a connect() before.
     // Furthermore, a lot is to be said about returning a Reference or a Revspec instead of a String.
     for name in [
@@ -190,4 +232,16 @@ pub fn stash(repo: &mut Repository) -> Result<bool> {
     };
 
     Ok(stashed)
+}
+
+#[cfg(test)]
+mod test {
+    use super::*;
+
+    #[test]
+    fn test_default_branch() {
+        let repo = Repository::open(".").unwrap();
+        let branch = get_default_branch(&repo).unwrap();
+        assert_eq!(branch, "origin/main");
+    }
 }
