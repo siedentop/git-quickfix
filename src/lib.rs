@@ -111,12 +111,11 @@ pub fn push_new_commit(repo: &Repository, branch: &str) -> Result<(), Report> {
         .current_dir(workdir)
         .status()?;
     if !status.success() {
-        eyre!("Failed to run git push. {}", status);
+        Err(eyre!("Failed to run git push. {}", status))
     } else {
         log::info!("Git push succeeded");
+        Ok(())
     }
-
-    Ok(())
 }
 
 /// Checks that repo is in "RepositoryState::Clean" state. This means there is
