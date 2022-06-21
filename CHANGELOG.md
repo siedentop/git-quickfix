@@ -10,6 +10,12 @@ and this project adheres to
 
 ## [Upcoming]
 
+## [0.1.0] - 2022-06-20
+
+This version signifies that the project is as complete as possible. I do not expect
+major updates (famous last words). Thank you to @rofrol, @betwo, @sharkdp, @msfjarvis for
+their contributions to the project.
+
 ### Added
 
 - Made `develop` (via `origin/develop`) a default target branch, as suggested by @msfjarvis [here](https://github.com/siedentop/git-quickfix/issues/7#issuecomment-791143253).
