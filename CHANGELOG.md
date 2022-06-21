@@ -13,6 +13,7 @@ and this project adheres to
 ### Added
 
 - Made `develop` (via `origin/develop`) a default target branch, as suggested by @msfjarvis [here](https://github.com/siedentop/git-quickfix/issues/7#issuecomment-791143253).
+- Use `git branch -rl` to identify where '\*/HEAD' points to. Thanks to @rofrol in #11 for the suggestion. In case this fails, the previous solution of using one of _main_, _master_, _develop_, or _devel_ is used.
 
 ## [0.0.5] - 2021-11-29
 
@@ -22,10 +23,15 @@ Thanks to @betwo and @sharkdp for their suggestions on improvements.
 
 - The option `--stash` has been renamed to `--autostash`. [Issue #9](https://github.com/siedentop/git-quickfix/issues/9)
 - The option `--keep` is now the default, and the opposite is now called `--remove`.
-Providing `--remove` will now drop the commit from the original branch. By default, the commit
-stays on the branch. [Issue #10](https://github.com/siedentop/git-quickfix/issues/8)
+  Providing `--remove` will now drop the commit from the original branch. By default, the commit
+  stays on the branch. [Issue #10](https://github.com/siedentop/git-quickfix/issues/8)
+
+### Fixed
+
+- Minor: Fix old 'suggestion' for '--stash' option.
 
 ### Removed
+
 - Removed the `qf` alias. All votes were in favor [1].
 
 [1]: https://github.com/siedentop/git-quickfix/issues/6
